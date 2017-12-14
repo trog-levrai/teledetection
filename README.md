@@ -1,2 +1,0 @@
-# teledetection
-Project for EPITA
