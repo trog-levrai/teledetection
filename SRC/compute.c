@@ -1,3 +1,4 @@
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <gtk/gtk.h>
@@ -48,9 +49,9 @@ double get_dist(guchar* pixel, double* mean) {
 //Returns the nearest mean to the pixel at (i,j)
 unsigned char get_mean(guchar* pixel, double** means) {
   unsigned char ans = 0;
-  float min = 1024.;
+  float min = 255.;
   for (size_t k = 0; k < K; ++k) {
-    float diff = get_dist(pixel, means[k]);
+    double diff = get_dist(pixel, means[k]);
     if (min > diff) {
       min = diff;
       ans = k;
@@ -59,20 +60,28 @@ unsigned char get_mean(guchar* pixel, double** means) {
   return ans;
 }
 
+static int sort_lambda(const void* e1, const void* e2) {
+  return *(unsigned char*)e1 - *(unsigned char*)e2;
+}
+
 void update_avg(guchar* pixel, double* mean) {
   for (size_t i = 0; i < 5; ++i)
     mean[i] += pixel[i];
 }
 
-void average_mean(size_t coeff, double* mean) {
+void average_mean(double* old, size_t coeff, double* mean) {
+  if (coeff == 0)
+    mean = memcpy(mean, old, sizeof (double) * 5);
   for (size_t i = 0; i < 5; ++i)
     mean[i] /= coeff > 0 ? coeff : 1;
 }
 
-double** compute_new_means(unsigned char** mapping, guchar** image, int nbLine, int nbCol) {
+double** compute_new_means(double** old_means, unsigned char** mapping, \
+    guchar** image, int nbLine, int nbCol) {
   double** means = malloc(sizeof (double*) * K);
   for (size_t i = 0; i < K; ++i)
     means[i] = calloc(sizeof (double), 5);
+    //means[i] = memcpy(malloc(sizeof (double) * 5), old_means[i], 5 * sizeof (double));
 
   size_t mean_size [K];
   for (size_t i = 0; i < K; ++i)
@@ -86,10 +95,27 @@ double** compute_new_means(unsigned char** mapping, guchar** image, int nbLine, 
   }
 
   for (size_t i = 0; i < K; ++i) {
-    average_mean(mean_size[i], means[i]);
+    average_mean(old_means[i], mean_size[i], means[i]);
     printf("%zu ", mean_size[i]);
   }
   printf("\n");
+  //Finding mean of clouds
+  if (mean_size[K - 1] > 0) {
+    guchar* tmp = malloc(sizeof (guchar) * 5 * mean_size[K - 1]);
+    size_t c = 0;
+    for (size_t i = 0; i < nbLine * nbCol; ++i) {
+      if (mapping[i % nbCol][i / nbCol] == K - 1) {
+        for (size_t j = 0; j < 5; ++j)
+          tmp[c + j] = image[i][j];
+        ++c;
+      }
+    }
+    qsort(tmp, 5 * mean_size[K - 1], sizeof (guchar), sort_lambda);
+    for (size_t i = 0; i < 5; ++i)
+      means[K - 1][i] = tmp[(5 * mean_size[K - 1]) / 2];
+    printf("Median is: %d\n", (int)tmp[(5 * mean_size[K - 1]) / 2]);
+    free(tmp);
+  }
   return means;
 }
 
@@ -105,21 +131,13 @@ double get_delta(double** means, double** new_means) {
   return ans;
 }
 
-static int sort_lambda(const void* e1, const void* e2) {
-  return *(unsigned char*)e1 - *(unsigned char*)e2;
-}
-
-double* get_init_mean(unsigned char amp, unsigned char min) {
+double* get_init_mean(double val) {//unsigned char amp, unsigned char min) {
   double* mean = malloc(sizeof (double) * 5);
   for (size_t i = 0; i < 5; ++i) {
-    double val = (double)min + (((double)amp / (double)K) * (double)i);
-    val += (double) amp / (2. * (double)K);
-    mean[0] = val;
-    mean[1] = val;
-    mean[2] = val;
-    mean[3] = val;
-    mean[4] = val;
+    mean[i] = val;
+    printf("%f ", val);
   }
+  printf("\n");
   return mean;
 }
 
@@ -140,7 +158,7 @@ void ComputeImage(guchar *pucImaOrig,
   guchar max = 0;
 
   for (size_t i = 0; i < NbCol * NbLine; ++i) {
-    guchar val = (guchar)(pucImaOrig[i * 3] + pucImaOrig[i * 3 + 1]  + pucImaOrig[i * 3 + 2]) / 3.;
+    guchar val = (guchar)(pucImaOrig[i * 3] + pucImaOrig[i * 3 + 1]  + pucImaOrig[i * 3 + 2]) / 3;
     if (val < min)
       min = val;
     if (val > max)
@@ -158,10 +176,13 @@ void ComputeImage(guchar *pucImaOrig,
     qsort(image[i], 5, sizeof (guchar), sort_lambda);
   }
 
+  printf("MinMax %d%d\n", min, max);
   //Initialisation des K poids de manière régulière
   double** means = malloc(sizeof (double*) * K);
   for (size_t i = 0; i < K; ++i) {
-    means[i] = get_init_mean(max - min, min);
+    double val = (double)min + (((double)(max - min) / (double)K) * (double)i);
+    val += (double)(max - min) / (2. * (double)K);
+    means[i] = get_init_mean(val);
   }
 
   //Initialisation du mapping pixel -> classe
@@ -176,7 +197,7 @@ void ComputeImage(guchar *pucImaOrig,
   int counter = 0;
   while (changed) {
     //Compute new means
-    double** new_means = compute_new_means(mapping, image, NbLine, NbCol);
+    double** new_means = compute_new_means(means, mapping, image, NbLine, NbCol);
     if (get_delta(means, new_means) < EPSILON)
       changed = 0;
     free(means);
@@ -196,11 +217,11 @@ void ComputeImage(guchar *pucImaOrig,
       iNumPix<iNbPixelsTotal*iNbChannels;
       iNumPix += iNbChannels){
     //[>moyenne sur les composantes RVB <]
-    ucMeanPix=(unsigned char)
-        ((
-          *(pucImaOrig+iNumPix) +
-          *(pucImaOrig+iNumPix+1) +
-          *(pucImaOrig+iNumPix+2))/3);
+    //ucMeanPix=(unsigned char)
+    //    ((
+    //      *(pucImaOrig+iNumPix) +
+    //      *(pucImaOrig+iNumPix+1) +
+    //      *(pucImaOrig+iNumPix+2))/3);
     ucMeanPix = mapping[(iNumPix / 3) % NbCol][(iNumPix / 3) / NbCol] == K - 1 ? 255 : 0;
 
     //[> sauvegarde du resultat <]
@@ -209,14 +230,6 @@ void ComputeImage(guchar *pucImaOrig,
         iNumChannel++)
       *(pucImaRes+iNumPix+iNumChannel)= ucMeanPix;
   }
-/*  for (size_t i = 0; i < NbCol; ++i) {
-    for (size_t j = 0; j < NbLine; ++j) {
-      guchar val = mapping[i][j] == K - 1 ? 255 : 0;
-      pucImaRes[i + NbCol * j] = val;
-      pucImaRes[i + NbCol * j + 1] = val;
-      pucImaRes[i + NbCol * j + 2] = val;
-    }
-  }*/
 
   free(means);
   free(image);
