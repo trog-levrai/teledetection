@@ -7,10 +7,9 @@
 # include "compute.h"
 # include "math.h"
 
-GdkPixbuf** get_images(int* nb_images) {
+GdkPixbuf** get_images() {
   DIR           *d;
   struct dirent *dir;
-  *nb_images = 0;
   d = opendir("./");
 
   GdkPixbuf** out = NULL;
@@ -27,20 +26,15 @@ GdkPixbuf** get_images(int* nb_images) {
 
         char file[1000];
         strcpy(file, "./");
-        strcat(file, "/");
         strcat(file, dir->d_name);
 
         GtkWidget *image  = gtk_image_new_from_file(file);
-        if (image == NULL) {
-          printf("%s, Wrong file.\n", file);
+        if (!image)
           continue;
-        }
 
         GdkPixbuf* pGdkPixbuf = gtk_image_get_pixbuf(GTK_IMAGE(image));
-        if (pGdkPixbuf == NULL) {
-          printf("%s, Wrong file.\n", file);
+        if (!pGdkPixbuf)
           continue;
-        }
 
         // Greyscale all images
 
@@ -50,7 +44,7 @@ GdkPixbuf** get_images(int* nb_images) {
         GdkPixbuf* pGdkPixbufImaRes = gdk_pixbuf_copy(pGdkPixbuf);
 
         guchar* pucImaOrig = gdk_pixbuf_get_pixels(pGdkPixbuf);
-        guchar* pucImaRes   = gdk_pixbuf_get_pixels(pGdkPixbufImaRes);
+        guchar* pucImaRes = gdk_pixbuf_get_pixels(pGdkPixbufImaRes);
 
         ComputeImage(pucImaOrig, NbLine, NbCol, pucImaRes);
 
@@ -62,10 +56,8 @@ GdkPixbuf** get_images(int* nb_images) {
             ++count;
         }
 
-        float r = (float)count / (float)(NbCol * NbLine);
-        printf("%s: %f\tpercents of clouds founds\n", file, r * 100);
-
-        *nb_images = *nb_images + 1;
+        float per = (float)count / (float)(NbCol * NbLine) * 100.;
+        printf("%s: %f\t /100 clouds founds\n", file, per);
       }
     }
     closedir(d);
@@ -76,8 +68,6 @@ GdkPixbuf** get_images(int* nb_images) {
 
 int main(int argc, char* argv[])
 {
-  int nb = 0;
-  get_images(&nb);
-
+  get_images();
   return 0;
 }

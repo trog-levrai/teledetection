@@ -141,8 +141,6 @@ void ComputeImage(guchar *pucImaOrig,
   int iNumChannel, iNbChannels=3; /* on travaille sur des images couleurs*/
   guchar ucMeanPix;
 
-  printf("Segmentation de l'image.... A vous!\n");
-
   //Greyscale of sorted neighbours vectors
   guchar** image = malloc(sizeof (guchar*) * NbCol * NbLine);
   guchar min = 255;
