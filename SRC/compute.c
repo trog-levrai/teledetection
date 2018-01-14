@@ -93,11 +93,8 @@ double** compute_new_means(double** old_means, unsigned char** mapping, \
     }
   }
 
-  for (size_t i = 0; i < K; ++i) {
+  for (size_t i = 0; i < K; ++i)
     average_mean(old_means[i], mean_size[i], means[i]);
-    printf("%zu ", mean_size[i]);
-  }
-  printf("\n");
   //Finding mean of clouds
   if (mean_size[K - 1] > 0) {
     guchar* tmp = malloc(sizeof (guchar) * 5 * mean_size[K - 1]);
@@ -203,7 +200,6 @@ void ComputeImage(guchar *pucImaOrig,
     }
     ++counter;
   }
-  printf("Counter is %d\n", counter);
 
   iNbPixelsTotal = NbCol * NbLine;
   for (iNumPix=0;
