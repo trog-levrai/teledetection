@@ -81,7 +81,6 @@ double** compute_new_means(double** old_means, unsigned char** mapping, \
   double** means = malloc(sizeof (double*) * K);
   for (size_t i = 0; i < K; ++i)
     means[i] = calloc(sizeof (double), 5);
-    //means[i] = memcpy(malloc(sizeof (double) * 5), old_means[i], 5 * sizeof (double));
 
   size_t mean_size [K];
   for (size_t i = 0; i < K; ++i)
@@ -106,14 +105,12 @@ double** compute_new_means(double** old_means, unsigned char** mapping, \
     for (size_t i = 0; i < nbLine * nbCol; ++i) {
       if (mapping[i % nbCol][i / nbCol] == K - 1) {
         for (size_t j = 0; j < 5; ++j)
-          tmp[c + j] = image[i][j];
-        ++c;
+          tmp[c++] = image[i][j];
       }
     }
     qsort(tmp, 5 * mean_size[K - 1], sizeof (guchar), sort_lambda);
     for (size_t i = 0; i < 5; ++i)
       means[K - 1][i] = tmp[(5 * mean_size[K - 1]) / 2];
-    printf("Median is: %d\n", (int)tmp[(5 * mean_size[K - 1]) / 2]);
     free(tmp);
   }
   return means;
@@ -133,11 +130,8 @@ double get_delta(double** means, double** new_means) {
 
 double* get_init_mean(double val) {//unsigned char amp, unsigned char min) {
   double* mean = malloc(sizeof (double) * 5);
-  for (size_t i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < 5; ++i)
     mean[i] = val;
-    printf("%f ", val);
-  }
-  printf("\n");
   return mean;
 }
 
@@ -158,25 +152,24 @@ void ComputeImage(guchar *pucImaOrig,
   guchar max = 0;
 
   for (size_t i = 0; i < NbCol * NbLine; ++i) {
-    guchar val = (guchar)(pucImaOrig[i * 3] + pucImaOrig[i * 3 + 1]  + pucImaOrig[i * 3 + 2]) / 3;
+    guchar val = (guchar)(pucImaOrig[i * 3] + pucImaOrig[i * 3 + 1]  + pucImaOrig[i * 3 + 2] / 3.);
     if (val < min)
       min = val;
     if (val > max)
       max = val;
     image[i] = calloc(sizeof (guchar), 5);
-    image[i][0] = (guchar)(pucImaOrig[i * 3] + pucImaOrig[i * 3 + 1]  + pucImaOrig[i * 3 + 2]) / 3.;
+    image[i][0] = (guchar)((pucImaOrig[i * 3] + pucImaOrig[i * 3 + 1]  + pucImaOrig[i * 3 + 2]) / 3.);
     if (i + 1 < NbCol * NbLine)
-      image[i][1] = (guchar)(pucImaOrig[(i+1) * 3] + pucImaOrig[(i+1) * 3 + 1]  + pucImaOrig[(i+1) * 3 + 2]) / 3.;
+      image[i][1] = (guchar)((pucImaOrig[(i+1) * 3] + pucImaOrig[(i+1) * 3 + 1]  + pucImaOrig[(i+1) * 3 + 2]) / 3.);
     if (i - 1 > 0)
-      image[i][2] = (guchar)(pucImaOrig[(i-1) * 3] + pucImaOrig[(i-1) * 3 + 1]  + pucImaOrig[(i-1) * 3 + 2]) / 3.;
+      image[i][2] = (guchar)((pucImaOrig[(i-1) * 3] + pucImaOrig[(i-1) * 3 + 1]  + pucImaOrig[(i-1) * 3 + 2]) / 3.);
     if (i - NbCol > 0)
-      image[i][3] = (guchar)(pucImaOrig[(i - NbCol) * 3] + pucImaOrig[(i - NbCol) * 3 + 1]  + pucImaOrig[(i - NbCol) * 3 + 2]) / 3.;
+      image[i][3] = (guchar)((pucImaOrig[(i - NbCol) * 3] + pucImaOrig[(i - NbCol) * 3 + 1]  + pucImaOrig[(i - NbCol) * 3 + 2]) / 3.);
     if (i + NbCol < NbCol * NbLine)
-      image[i][4] = (guchar)(pucImaOrig[(i + NbCol) * 3] + pucImaOrig[(i + NbCol) * 3 + 1]  + pucImaOrig[(i + NbCol) * 3 + 2]) / 3.;
+      image[i][4] = (guchar)((pucImaOrig[(i + NbCol) * 3] + pucImaOrig[(i + NbCol) * 3 + 1]  + pucImaOrig[(i + NbCol) * 3 + 2]) / 3.);
     qsort(image[i], 5, sizeof (guchar), sort_lambda);
   }
 
-  printf("MinMax %d%d\n", min, max);
   //Initialisation des K poids de manière régulière
   double** means = malloc(sizeof (double*) * K);
   for (size_t i = 0; i < K; ++i) {
